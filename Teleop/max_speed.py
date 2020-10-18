@@ -46,8 +46,6 @@ class DaguWheelsDriver:
         self.rightSpeed = 0.0
         self.updatePWM()
 
-        self.setupROS()
-
     def PWMvalue(self, v, minPWM, maxPWM):
         pwm = 0
         if fabs(v) > self.SPEED_TOLERANCE:
@@ -105,46 +103,24 @@ class DaguWheelsDriver:
 
 #-----------------------------------------------------------------
 
-    b = 0.1
-    LINEAR_SCALING = 0.5/0.322
-    ROTATION_SCALING = 2
-    def fwdkin(self, twist):
-        v = twist.linear.x * self.LINEAR_SCALING
-        omega = twist.angular.z * self.ROATION_SCALING
-
-        vl = v-omega*self.b/2
-        vr = v+omega*self.b/2
-        if self.debug:
-            print "fwdkin: vl = %5.3f, vr = %5.3f, v = %5.3f, omega = %5.3f" % (vl, vr, v, omega)
-        return vl,vr
-
-    LEFT_MAX_SPEED = 0.776
-    RIGHT_MAX_SPEED = 0.817
-    def scaleVel(self, left_vel, right_vel):
-        # Scale from 0 to 1
-        left_scale = left_vel / self.LEFT_MAX_SPEED 
-        right_scale = right_vel / self.RIGHT_MAX_SPEED
-
-        return left_scale, right_scale
-
-
-#Create callback function here and drive motor based on message received
-    def twistCallback(self, twist):
-        left_vel, right_vel = self.fwdkin(twist)
-        left_scale, right_scale = self.scaleVel(left_vel, right_vel)
-        self.setWheelsSpeed(left_scale, right_scale)
-
-
-
-#Initialize ROS node, subscriber and make the program run indefinitely
-    def setupROS(self):
-        rospy.Subscriber("/cmd_vel", Twist, self.twistCallback)
-
 if __name__ == '__main__':
-    rospy.init_node('duckiebot_motors', anonymous=False)
     obj = DaguWheelsDriver(debug=True)
-    rospy.on_shutdown(obj.Shutdown)
-    rospy.spin()
+
+    obj.setWheelsSpeed(0.0, 0.0)
+    while (1):
+        option = raw_input("l for left, r for right:")
+
+        if option.startswith('l'):
+            obj.setWheelsSpeed(1.0, 0.0)
+        elif option.startswith('r'):
+            obj.setWheelsSpeed(0.0, 1.0)
+        else:
+            print("Option not recognized")
+            continue
+
+        time.sleep(5)
+        obj.setWheelsSpeed(0.0,0.0)         #Stop duckiebot
+
 
 
 
