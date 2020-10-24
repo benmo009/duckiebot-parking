@@ -23,7 +23,7 @@ from gym_duckietown.wrappers import UndistortWrapper
 class DuckiebotSim(object):
     def __init__(self):
         # Initialize Robot Simulation
-        self.env = DuckietownEnv( seed = 1, map_name = 'udem1', draw_curve = False, draw_bbox = False, distortion = False )
+        self.env = DuckietownEnv( seed=1, map_name = 'udem1', draw_curve = False, draw_bbox = False, distortion = False, domain_rand = False)
         self.env.reset()
         self.env.render()
         # self.action = np.array([0.44, 0.0])
@@ -44,7 +44,7 @@ class DuckiebotSim(object):
         self.has_published = False
         
         # Setup Subscriber
-        self.sub_cmd = rospy.Subscriber("/cmd_vel", Twist, self.cbCmd, queue_size=1)
+        #self.sub_cmd = rospy.Subscriber("/cmd_vel", Twist, self.cbCmd, queue_size=1)
         
         
         # Setup timer
@@ -62,19 +62,13 @@ class DuckiebotSim(object):
             self.grabAndPublish(self.pub_img)
         
     def grabAndPublish(self,publisher):
+        self.action = self.basic_control()
         # Grab image from simulation and apply the action
         obs, reward, done, info = self.env.step(self.action)
         rospy.loginfo('[%s] step_count = %s, reward=%.3f' % (self.node_name, self.env.unwrapped.step_count, reward))
         
         image = cv2.cvtColor(obs, cv2.COLOR_BGR2RGB) # Correct color for cv2
-        """
-        ##show image
-        cv2.namedWindow("Image")
-        if (not image is None):
-            cv2.imshow("Image",image)
-        if cv2.waitKey(1)!=-1:     #Burak, needs to modify this line to work on your computer, THANKS!
-            cv2.destroyAllWindows()
-        """
+
         # Publish raw image
         image_msg = self.bridge.cv2_to_imgmsg(image)
                 
@@ -86,11 +80,11 @@ class DuckiebotSim(object):
             rospy.loginfo("[%s] Published the first image." %(self.node_name))
             self.has_published = True
         
-        if done and (self.env.unwrapped.step_count != 1500):
-            rospy.logwarn("[%s] DONE! RESETTING." %(self.node_name))
-            self.env.reset()
+        # if done and (self.env.unwrapped.step_count != 1500):
+        #     rospy.logwarn("[%s] DONE! RESETTING." %(self.node_name))
+        #     self.env.reset()
             
-        self.env.render()
+        #self.env.render()
         
     def cbCmd(self,cmd_msg):
         linear_vel = cmd_msg.linear.x # Forward Velocity [-1 1]
@@ -101,6 +95,21 @@ class DuckiebotSim(object):
         rospy.loginfo("[%s] Shutdown." %(self.node_name))
         self.env.close()
         
+    def basic_control(self):
+        lane_pose = self.env.get_lane_pos2(self.env.cur_pos, self.env.cur_angle)
+        distance_to_road_center = lane_pose.dist 
+        angle_from_straight_in_rads = lane_pose.angle_rad 
+
+        k_p = 10
+        k_d = 5
+
+        speed = 0.2
+
+        steering = k_p*distance_to_road_center + k_d*angle_from_straight_in_rads
+
+        return [speed, steering]
+
+
 if __name__ == '__main__': 
     rospy.init_node('duckiebot_sim',anonymous=False)
     duckiebot_sim = DuckiebotSim()
