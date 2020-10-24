@@ -10,6 +10,8 @@ from collections import namedtuple
 import math
 from math import floor, atan2, pi, cos, sin, sqrt
 from cv_bridge import CvBridge, CvBridgeError
+import os
+import time
 
 def callback(data):
 
@@ -24,10 +26,19 @@ def callback(data):
     cv2.namedWindow("Image")
     if (not cv_image is None):
         cv2.imshow("Image",cv_image)
+
+        # Save the image
+        filename = time.strftime("%Y%m%d-%H%M%S")
+        cv2.imwrite('duckietown_images/{:s}.png'.format(filename), cv_image)
+
+        
     if cv2.waitKey(1)!=-1:     #Burak, needs to modify this line to work on your computer, THANKS!
         cv2.destroyAllWindows()
 
 if __name__ == '__main__': 
+    if not os.path.exists('duckietown_images'):
+        os.makedirs('duckietown_images')
+
     rospy.init_node('cam_stream_node', anonymous=False)
     sub = rospy.Subscriber("/image_raw",Image,callback)
     rospy.spin()
