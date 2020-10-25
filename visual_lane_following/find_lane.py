@@ -3,14 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load the image
-img = cv2.imread('practice_image.png')
+img = cv2.imread('practice_image_3.png')
 plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 plt.show()
 
 # Use edge detection to remove the sky and just have road
 
 # For now, manually cut the image
-img = img[150::, :]
+img = img[120::, :]
 plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 plt.show()
 
@@ -26,3 +26,5 @@ M = cv2.getPerspectiveTransform(src, dst)
 warped_img = cv2.warpPerspective(img, M, (image_W, image_H))
 plt.imshow(cv2.cvtColor(warped_img, cv2.COLOR_BGR2RGB))
 plt.show()
+
+# Use HSV Filters or edge detection to find bounds on the lanes
