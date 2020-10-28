@@ -22,8 +22,8 @@ def warp_image(img):
     image_H = (img.shape)[0]
     image_W = (img.shape)[1]
 
-    new_Left = 250
-    new_Right = 450
+    new_Left = 270
+    new_Right = 350
     src = np.float32([[0, image_H], [image_W, image_H], [0,0], [image_W, 0]])
     dst = np.float32([[new_Left,image_H], [new_Right, image_H], [0,0], [image_W, 0]])
     M = cv2.getPerspectiveTransform(src, dst)
