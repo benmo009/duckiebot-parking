@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load the image
-img = cv2.imread('practice_image_2.png')
+img = cv2.imread('practice_image.png')
 # plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 # plt.show()
 
@@ -49,6 +49,17 @@ cv2.imshow('Aerial View', img_warped)
 cv2.imshow('HSV Image', img_hsv)
 cv2.imshow('Combined Mask', combined_filtered)
 
-cv2.imshow('Filtered - Combined', cv2.bitwise_and(img_warped, img_warped, mask=combined_filtered))
+img_filtered = cv2.bitwise_and(img_warped, img_warped, mask=combined_filtered)
+cv2.imshow('Filtered - Combined', img_filtered)
 
 cv2.waitKey(0)
+
+cv2.imwrite('aerial.png', img_warped)
+cv2.imwrite('filtered.png', img_filtered)
+
+# Use edge detection?
+
+# Fid the points on the lane lines to a polynomial
+
+# Draw the polynomial over the lines
+
