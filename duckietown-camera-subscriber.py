@@ -13,10 +13,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import os
 import time
 
-# class CameraSubscriber:
-#     def __init__(self):
-#         pass
-
+# Comverts image to aerial view and then filters out the lane lines
 def warp_image(img):
     img = img[120::, :]
     image_H = (img.shape)[0]
@@ -28,8 +25,23 @@ def warp_image(img):
     dst = np.float32([[new_Left,image_H], [new_Right, image_H], [0,0], [image_W, 0]])
     M = cv2.getPerspectiveTransform(src, dst)
 
-    warped_img = cv2.warpPerspective(img, M, (image_W, image_H))
-    return warped_img
+    img_warped = cv2.warpPerspective(img, M, (image_W, image_H))
+
+    # Transform image to HSV color space
+    img_hsv = cv2.cvtColor(img_warped, cv2.COLOR_BGR2HSV)
+
+    # Filter out everything but yellow (dotted lines) and white (side lines)
+    yellow_lower = np.array([20, 75, 100])
+    yellow_upper = np.array([30, 255, 255])
+    white_lower = np.array([0,0,1])
+    white_upper = np.array([120,5,255])
+
+    img_yellow = cv2.inRange(img_hsv, yellow_lower, yellow_upper)
+    img_white = cv2.inRange(img_hsv, white_lower, white_upper)
+    combined_filtered = img_yellow + img_white
+    img_filtered = cv2.bitwise_and(img_warped, img_warped, mask=combined_filtered)
+    
+    return img_filtered
     
 
 def callback(data):
