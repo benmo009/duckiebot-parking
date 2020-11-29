@@ -18,6 +18,8 @@ Run just the sim with `$ rosrun robotics_project sim.py`
 
 Run a keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist_keyboard.py`
 
+If you would like to run the robot with all nodes set up for Apriltag Decoding, run `$ roslaunch robotics_project run.launch` and `$ roslaunch robotics_project apriltag.launch`
+
 ## Running Teleop Code on Real Robot
 Setup the `ROS_MASTER_URI` environment variable on the duckiebot and host computer so that they have the same ros master.
 
