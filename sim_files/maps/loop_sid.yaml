@@ -1,0 +1,62 @@
+# This is a closed loop (no intersections) with a few obstacles directly
+# on the road, which have to be avoided.
+
+tiles:
+- [floor  , floor       , floor     , floor     , floor         , floor     , floor         , floor  ]
+- [floor  , curve_left/W, straight/W, straight/W, straight/W    , straight/W, curve_left/N  , floor  ]
+- [floor  , straight/S  , parking/W , floor     , floor         , floor     , straight/N    , floor  ]
+- [floor  , straight/S  , floor     , floor     , floor         , floor     , straight/N    , floor  ]
+- [floor  , straight/S  , floor     , floor     , curve_right/N , straight/E, curve_left/E  , floor  ]
+- [floor  , curve_left/S, straight/E, straight/E, curve_left/E  , floor     , floor         , floor  ]
+- [floor  , floor       , floor     , floor     , floor         , floor     , floor         , floor  ]
+
+# NOTE: obstacles cannot be optional, because they will change for
+# every episode, and this will interfere with imitation learning
+objects:
+
+#- kind: sign_oneway_left
+#  pos: [1.5,3.5]
+#  rotate: 90
+#  height: 0.15
+#
+#- kind: sign_oneway_left
+#  pos: [1.5,3.5]
+#  rotate: 270 
+#  height: 0.15
+#
+#- kind: sign_oneway_left
+#  pos: [6.5,3.5]
+#  rotate: 90
+#  height: 0.35
+
+- kind: sign_yield_low
+  pos: [6.5,3]
+  rotate: 90
+  height: 0.15
+
+- kind: sign_oneway_right_low
+  pos: [2.25,2.1]
+  rotate: 270
+  height: 0.15
+
+#- kind: duckie
+#  pos: [0.5,0.5]
+#  rotate: 10
+#  height: 0.06
+#
+#- kind: duckie
+#  pos: [0.5,0.7]
+#  rotate: 10
+#  height: 0.06
+#
+#- kind: duckie
+#  pos: [6.5,0.7]
+#  rotate: 10
+#  height: 0.06
+#
+#- kind: cone
+#  pos: [0, 2.5]
+#  rotate: 90
+#  height: 0.08
+
+tile_size: 0.585
