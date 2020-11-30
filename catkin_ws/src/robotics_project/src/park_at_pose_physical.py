@@ -11,9 +11,12 @@ class DriveToPose:
 
     def __init__(self):
         rospy.init_node('drive_to_pose', anonymous=True)
+        rospy.on_shutdown(self.shutdown_handler)
 
         #self.kv = 1
         #self.kw = .2
+
+        self.finished = False
 
         self.pub_vel = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
@@ -23,6 +26,9 @@ class DriveToPose:
 
         rate = rospy.Rate(5.0)
         while not rospy.is_shutdown():
+            if self.finished:
+                break
+
             # Get transform from bot to parking sign
             try:
                 transform = tfBuffer.lookup_transform('parking_spot', 'duckiebot', rospy.Time(0))
@@ -64,34 +70,50 @@ class DriveToPose:
 
             # check if within stopping distance
             c=.25
-            #dist = math.sqrt(delta_x**2 + delta_y**2 + c*delta_theta**2)
-            dist = math.sqrt(delta_x**2 + delta_y**2)
-            print(dist)
+            dist = math.sqrt(delta_x**2 + delta_y**2 + c*delta_theta**2)
+            #dist = math.sqrt(delta_x**2 + delta_y**2)
+            print('dist: ' + str(dist))
 
             vel_msg = Twist()
-            if dist > 0.05:
+            #if dist > 0.05:
+            if dist > 0.1:
                 rho = math.sqrt(delta_x**2 + delta_y**2)
 
                 alpha = self.min_angle_diff(math.atan2(delta_y, delta_x), eul_rad[2])
                 beta = self.min_angle_diff(-eul_rad[2], alpha)
 
-                kp = 1
-                ka = 2
-                kb = -.1
+                kp = 0.45
+                ka = 1
+                kb = -0.8
 
                 v = kp*rho
                 omega = (ka*alpha+kb*beta)
 
+                print('v: ' + str(v))
+                print('omega: ' + str(omega))
+                # Minimum linear velocity to avoid stalling
+                min_vel = 0
+                if (abs(v) < min_vel):
+                    v=v/abs(v)*min_vel
                 vel_msg.linear.x = v
                 vel_msg.angular.z = omega
+                print('v_post: ' + str(v))
+                print('omega_post: ' + str(omega))
             else:
                 vel_msg.linear.x = 0
                 vel_msg.angular.z = 0
+                self.finished = True
             self.pub_vel.publish(vel_msg)
 
             print('-----')
 
             rate.sleep()
+
+    def shutdown_handler(self):
+        vel_msg = Twist()
+        vel_msg.linear.x = 0
+        vel_msg.angular.z = 0
+        self.pub_vel.publish(vel_msg)
 
     def min_angle_diff(self, theta_1, theta_2):
         delta_theta = theta_1-theta_2

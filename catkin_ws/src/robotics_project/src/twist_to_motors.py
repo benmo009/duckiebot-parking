@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #Duckibot Driver ROS subscriber in Python
 
 import time
@@ -110,7 +112,7 @@ class DaguWheelsDriver:
     ROTATION_SCALING = 2
     def fwdkin(self, twist):
         v = twist.linear.x * self.LINEAR_SCALING
-        omega = twist.angular.z * self.ROATION_SCALING
+        omega = twist.angular.z * self.ROTATION_SCALING
 
         vl = v-omega*self.b/2
         vr = v+omega*self.b/2
