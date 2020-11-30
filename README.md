@@ -10,11 +10,14 @@ Follow the installation instructions in the gym-duckietown repository
 
 Setup the custom map by copying the files in `sim_files/` to their respective folders in `gym-duckietown/gym-duckietown`.
 
+
 Setup the catkin workspace in the repository. See ROS [workspace documentation](http://wiki.ros.org/catkin/Tutorials/create_a_workspace)
 ## Running Teleop Code On Simulator
 First start ros with `$ roscore`
 
 Run just the sim with `$ rosrun robotics_project sim.py`
+
+(Note: You may have to comment out line 451 in `gym-duckietown/gym-duckietown/simulator.py` : `logger.info('using user tile start: %s' % self.user_tile_start)`
 
 Run a keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist_keyboard.py`
 
@@ -38,4 +41,21 @@ Start the keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist
 Start the twist to motors node on the dukiebot with `$ python twist_to_motors.py` (In the teleop folder)
 
 ## Running Parking Autonomous Code on Simulator
-Todo
+
+First start ros with `$ roscore`
+
+Start the sim and supporting nodes with `$ roslaunch robotics_project run_sim.launch`. This launches the folling nodes:
+
+- sim.py: Simulator on custom parking map
+- static_tf2_broadcaster.py: Broadcasts relative transform between sign+parking spot, and between camera+duckiebot
+- image_proc: Uses camera parameters to rectify the image
+- rqt_gui: Can be used to view the image streams, set it to '/tag_detections_image' to view the apriltag output
+- rviz: Opens rviz with the transform tree showing
+
+Run apriltags_ros with `$ roslaunch robotics_project apriltag.launch`
+
+This just launches the apriltag node, but was kept seperate to be able to stop and start it to change settings without needing to restart everything else.
+
+Start the keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist_keyboard.py`. Drive the duckiebot around so that the parking sign is in the camera view.
+
+Run `$ rosrun robotics_project park_at_pose.py`. If the parking sign is in view, the duckiebot should drive to the parking spot. 

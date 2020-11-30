@@ -23,7 +23,6 @@ from gym_duckietown.wrappers import UndistortWrapper
 class DuckiebotSim(object):
     def __init__(self):
         # Initialize Robot Simulation
-        #self.env = DuckietownEnv( seed = 1, map_name = 'udem1', draw_curve = False, draw_bbox = False, distortion = False )
         self.env = DuckietownEnv( seed = 1, map_name = 'loop_sid', draw_curve = False, draw_bbox = False, distortion = True, domain_rand = False, camera_width=640, camera_height=480, user_tile_start=(1,3))
         self.env.reset()
         self.env.render()
