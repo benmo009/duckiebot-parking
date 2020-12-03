@@ -2,140 +2,172 @@ import cv2
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 
-# Load the image
-img = cv2.imread('duckietown_images/3.png')
-# plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-# plt.show()
+# Function to solve quadratic function
+def quadratic_formula(p):
+    [a, b, c] = p
 
-# Cut the image
-img = img[120::, :]
-plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-plt.show()
+    d = b**2 - 4*a*c
+    if d < 0:
+        return -1
+    
+    x1 = ( -b + np.sqrt(d) ) / (2*a)
+    x2 = ( -b - np.sqrt(d) ) / (2*a)
 
-# Warp the image to get an aerial view
-image_H = (img.shape)[0]
-image_W = (img.shape)[1]
-
-new_Left = 270
-new_Right = 350
-car_pos = ((new_Right - new_Left) / 2) + new_Left
-car_pos = np.array([car_pos, image_H-1], dtype=int)
-src = np.float32([[0, image_H], [image_W, image_H], [0,0], [image_W, 0]])
-dst = np.float32([[new_Left,image_H], [new_Right, image_H], [0,0], [image_W, 0]])
-M = cv2.getPerspectiveTransform(src, dst)
-Minv = cv2.getPerspectiveTransform(dst, src)  # Use to unwarp the image
-
-img_warped = cv2.warpPerspective(img, M, (image_W, image_H))
-plt.imshow(cv2.cvtColor(img_warped, cv2.COLOR_BGR2RGB))
-plt.scatter(car_pos[0], car_pos[1])
-plt.show()
+    return (x1, x2)
 
 
-# Transform image to HSV color space
-img_hsv = cv2.cvtColor(img_warped, cv2.COLOR_BGR2HSV)
-plt.imshow(img_hsv)
-plt.show()
+# Function for cropping and then warping the image
+def warp_image(img, left, right):
+    # Get the dimensions of the image
+    (image_h, image_w, _) = img.shape
 
-# Filter out everything but yellow (dotted lines) and white (side lines)
-yellow_lower = np.array([20, 75, 100])
-yellow_upper = np.array([30, 255, 255])
-white_lower = np.array([0,0,1])
-white_upper = np.array([120,5,255])
+    # Set the car position to the center of the window
+    car_pos = ((right - left) / 2) + left
+    car_pos = np.array([car_pos, image_h-1], dtype=int)
 
-img_yellow = cv2.inRange(img_hsv, yellow_lower, yellow_upper)
-img_white = cv2.inRange(img_hsv, white_lower, white_upper)
-combined_filtered = img_yellow + img_white
+    # Warp the image to get an areal view
+    src = np.float32([[0, image_h], [image_w, image_h], [0,0], [image_w, 0]])
+    dst = np.float32([[left,image_h], [right, image_h], [0,0], [image_w, 0]])
+    M = cv2.getPerspectiveTransform(src, dst)
+    Minv = cv2.getPerspectiveTransform(dst, src)  # Use to unwarp the image
 
-# Show all of the images
-cv2.imshow('Aerial View', img_warped)
-cv2.imshow('HSV Image', img_hsv)
-cv2.imshow('Combined Mask', combined_filtered)
+    img_warped = cv2.warpPerspective(img, M, (image_w, image_h))
 
-img_filtered = cv2.bitwise_and(img_warped, img_warped, mask=combined_filtered)
-cv2.imshow('Filtered - Combined', img_filtered)
-
-#cv2.imwrite('aerial.png', img_warped)
-#cv2.imwrite('filtered.png', img_filtered)
-
-# Fid the points on the lane lines to a polynomial
-# Convert to binary image
-img_yellow_bin = img_yellow / 255
-cv2.imshow('Binary Image', img_yellow_bin)
-cv2.waitKey(0)
-
-# Try using polyfit
-data = np.argwhere(img_yellow_bin == 1)
-# plt.scatter(data[:,1], data[:,0])
-# plt.scatter(car_pos[0],car_pos[1])
-# plt.show()
+    return img_warped, car_pos, Minv
 
 
-# Draw the polynomial over the lines
+# Takes an image and returns a filtered binary image
+def get_binary_image(img, lower, upper):
+    # Convert to HSV color space
+    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-# Find points to the left of car_pos
-window_H = 50
-window_W = 10
+    # Filter out the specified color
+    img_filtered = cv2.inRange(img_hsv, lower, upper)
 
-# Go down until finding row with ones
-i = 0
-start_pos = 0
-while True:
-    row = img_yellow_bin[car_pos[1]-i, 0:car_pos[0]]
-    row = np.where(row)
-    if row[0].size != 0:
-        start_pos = [car_pos[0], car_pos[1]-i]
-        break
-    else:
-        i += 1
+    # Divide by 255 to convert to binary
+    img_bin = img_filtered / 255
+
+    return img_bin
 
 
-points = []
-for i in range(window_H):
-    row = img_yellow_bin[start_pos[1]-i, ::]
-    row = np.where(row)
-    if row[0].size != 0:
-        middle = int(np.mean(row))
-        points.append([start_pos[1]-i, middle])
+# Takes binary image and estimates the center lane line
+def estimate_lane(img, window_h=70, window_w=50):
+    data = np.argwhere(img == 1)
 
-# Convert to numpy array
-points = np.asarray(points)
-print(points)
+    start_pos = np.max(data[:,0])
 
-# Find a 1-degree fit to the points
-p = np.polyfit(points[:, 1], points[:, 0], 1)
-p = np.poly1d(p)
-print("Fitted polynomial:")
-print(p)
-print(p[0])
-print(p[1])
+    # Get the middle point for each row
+    # Only look at points within the window dimensions
+    # For each row, shift the window to be centered at the previous middle point
+    points = []
+    middle = 0
+    left = 0
+    for i in range(window_h):
+        y = start_pos - i
+        if i == 0:
+            # For the first row, look in the entire row
+            row = img[y,::]
+            
+        else:
+            # Compute left and right bounds to look in
+            left = middle - window_w // 2
+            right = middle + window_w // 2
+            row = img[y, left:right]
 
-# Parameters for drawing a box
-window_center = points[0,1]
-window_center = np.array([window_center, car_pos[1]])
-x = int(window_center[0] - 0.5*window_W)
-y = int(window_center[1] - window_H)
+        # Find all the points in the row thats a 1
+        ones = np.where(row)
 
-# Calculate distance from center of lane
-distance_from_center = (car_pos[0] - p[0]) / p[1]
+        # Recordthe middle point 
+        if ones[0].size != 0:
+            middle = int(np.mean(ones)) + left
+            points.append([y, middle])
 
-# Check what direction the angle should be
-# If the slope of the polynomial is negative, turn left
-# If the slope of the polynomial is positive, turn right
-angle_from_straight = math.atan2(1, abs(p[1]))
+    # Convert to numpy array
+    points = np.asarray(points)
 
-print("Distance from Center = {:.2f}".format(distance_from_center))
-print("Angle from Straight = {:.2f}".format(angle_from_straight))
+    # Fit the points to a 1-degree polynomial
+    p_lin = np.polyfit(points[:,1], points[:,0], 1)
+    p_lin = np.poly1d(p_lin)
+    # Fit the points to a 2-degree polynomial
+    p_quad = np.polyfit(points[:,1], points[:,0], 2)
+    p_quad = np.poly1d(p_quad)
+
+    return p_lin, p_quad, data
 
 
-# Plot
-fig, ax = plt.subplots(1)
-ax.scatter(data[:, 1], data[:, 0])
-ax.scatter(car_pos[0], car_pos[1])
-rect = patches.Rectangle((x, y), window_W, window_H,
-                         linewidth=1, edgecolor='r', facecolor='none')
-ax.add_patch(rect)
-x_axis = np.linspace(x, x+window_W, 100)
-ax.plot(x_axis, p(x_axis), color='red')
-plt.show()
+# Compute the angle from vertical to the estimated line
+def compute_theta(p, x1, x2):
+    # Compute the two points
+    p1 = [ x1, p(x1) ]
+    p2 = [ x2, p(x2) ]
+
+    # Shift p2 such that p1 is at (0,0).
+    p2[1] = abs(p2[1] - p1[1])
+    p2[0] = p2[0] - p1[0]
+
+    theta = math.atan2(p2[0], p2[1])
+
+    return theta
+
+
+# Compute the distance of the car from the estimated line
+def compute_dist(quad, car_pos, points, n=10):
+    y = car_pos[1]  # car's y position
+    x = quadratic_formula(quad - y)
+
+    # Take the solution that is closer to the points in binary image
+    avg_distance = np.array([0, 0])
+    # Compute each solution's distance to the n points at the hightes y value
+    for point in points[-n:-1,:]:
+        avg_distance[0] += np.linalg.norm(point - [y, x[0]])
+        avg_distance[1] += np.linalg.norm(point - [y, x[1]])
+
+    avg_distance = avg_distance / n
+
+    # Take the point with smaller average distance
+    x = x[np.argmin(avg_distance)]
+
+    # Compute the distance
+    dist = car_pos[0] - x
+
+    return dist
+
+
+# Function that takes in an image and returns the estimate distance from the center line and angle
+def estimate_position(img, crop_val=120, new_left=270, new_right=350):
+    # Crop the image with specified value
+    img = img[crop_val::, :]
+
+    # Warp the image
+    img_warped, car_pos, Minv = warp_image(img, new_left, new_right)
+
+    # Filter out the yellow dotted lines
+    yellow_lower = np.array([20, 75, 100])
+    yellow_upper = np.array([30, 255, 255])
+
+    img_bin = get_binary_image(img_warped, yellow_lower, yellow_upper)
+
+    # Estimate the lane as a 1 dimensional polynomial
+    p_lin, p_quad, points = estimate_lane(img_bin)
+    print(p_lin)
+    print(p_quad)
+
+    # Compute the angle from the estimated line
+    # positive angle -> turn right
+    # negative angle -> turn left
+    theta = compute_theta(p_lin, new_left, new_right)
+    
+    # Calculate distance from center of lane
+    dist = compute_dist(p_quad, car_pos, points)
+
+    return dist, theta
+
+
+
+if __name__ == '__main__':
+    image_file = 'duckietown_images/7.png'
+    img = cv2.imread(image_file)
+    dist, theta = estimate_position(img)
+    print('Distance from Center Line = {:.2f}'.format(dist))
+    print('Angle from Straight = {:.2f} rad'.format(theta))
