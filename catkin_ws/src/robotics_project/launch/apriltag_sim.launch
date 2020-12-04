@@ -1,6 +1,6 @@
 <launch>
-  <rosparam command="load" file="./config/settings.yaml" ns="apriltag_node" />
-  <rosparam command="load" file="./config/tags.yaml" ns="apriltag_node" />
+  <rosparam command="load" file="$(find robotics_project)/launch/config/settings.yaml" ns="apriltag_node" />
+  <rosparam command="load" file="$(find robotics_project)/launch/config/tags.yaml" ns="apriltag_node" />
 
   <node pkg="apriltag_ros" type="apriltag_ros_continuous_node" name="apriltag_node" clear_params="true" output="screen" launch-prefix="" >
     <!-- Remap topics from those used in code to those on the ROS network -->

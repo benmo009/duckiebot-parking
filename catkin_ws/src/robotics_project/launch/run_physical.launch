@@ -1,0 +1,21 @@
+<launch>
+  <node pkg="robotics_project" type="static_tf2_broadcaster_physical.py" name="static_tf2_broadcaster"/>
+  <node pkg="robotics_project" type="twist_to_motors.py" name="twist_to_motors" />
+  <node pkg="cv_camera" type="cv_camera_node" name="cv_camera" >
+    <param name="rate" type="int" value="15" />
+  </node>
+  <!--<node pkg="image_proc" type="image_proc" name="image_proc" ns="cv_camera" >-->
+  <node pkg="image_proc" type="image_proc" name="image_proc" ns="image_resize_nodelet" >
+    <param name="queue_size" type="int" value="30" />
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="image_resize_nodelet" args="standalone image_proc/resize" >
+    <remap from="image" to="cv_camera/image_raw"/>
+    <remap from="camera_info" to="cv_camera/camera_info"/>
+    <remap from="image_resize_nodelet/image" to="image_resize_nodelet/image_raw"/>
+    <param name="scale_width" type="double" value="0.5" />
+    <param name="scale_height" type="double" value="0.5" />
+  </node>
+
+  <include file="$(find robotics_project)/launch/apriltag_physical.launch" />
+</launch>
