@@ -59,3 +59,22 @@ This just launches the apriltag node, but was kept seperate to be able to stop a
 Start the keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist_keyboard.py`. Drive the duckiebot around so that the parking sign is in the camera view.
 
 Run `$ rosrun robotics_project park_at_pose.py`. If the parking sign is in view, the duckiebot should drive to the parking spot. 
+
+## Visual Lane Following
+
+Use the Jupyter Notebook `find_lane.ipynb` to go through the process of estimating the car's pose relative to the center lane line for one image.
+
+In one terminal, start ROS with `$ roscore`  
+
+Open another terminal and start the simulation node `$ python duckietown-sim-node.py`
+
+Open a third terminal and start the camera controler node `$ python duckietown_camera_controller.py`
+
+Optionally, run a node that shows the warped and filtered perspective with `$ python duckietown_camera_show_binary.py`
+
+Video demo in `visual_lane_following_demo.mp4`
+
+TODO:  
+
+- adjust gains for better control
+- Build using ROS catkin system so that it can be launched using `roslaunch`  
