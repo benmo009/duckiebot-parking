@@ -7,6 +7,7 @@ from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Image
 
 import math
+import time
 
 
 class DuckiebotCamera:
@@ -131,16 +132,13 @@ class DuckiebotCamera:
 
     # Compute the angle from vertical to the estimated line
     def compute_theta(self):
-        # Compute the two points
-        (x1, x2) = self.warp_param
-        p1 = [ x1, self.p_lin(x1) ]
-        p2 = [ x2, self.p_lin(x2) ]
+        # Use the slope from the linear estimation
+        self.theta = -math.atan2(1, self.p_lin[1])
 
-        # Shift p2 such that p1 is at (0,0).
-        p2[1] = abs(p2[1] - p1[1])
-        p2[0] = p2[0] - p1[0]
-
-        self.theta = math.atan2(p2[0], p2[1])
+        if self.theta > math.pi/2:
+            self.theta = self.theta - math.pi
+        if self.theta < -math.pi/2:
+            self.theta = math.pi + self.theta
 
 
     # Compute the distance of the car from the estimated line
@@ -178,12 +176,11 @@ class DuckiebotCamera:
         # Warp the image
         self.warp_image()
 
-
+        # Filter out the yellow dotted line 
         self.get_binary_image()
 
         # Estimate the lane as a 1 dimensional polynomial
         self.estimate_lane()
-
 
         # Compute the angle from the estimated line
         # positive angle -> turn right
@@ -234,14 +231,14 @@ class DuckiebotCamera:
             rospy.loginfo('Estimated dist = {:.2f}'.format(self.dist))
             rospy.loginfo('Estimated theta = {:.2f}'.format(self.theta))
 
-            action = Twist()
-            k = 0.25
-
-            v = 0.2
-
-            w = -k * (self.theta)
-
             # Use the estimates to compute steering 
+            action = Twist()
+            k_d = 0.3
+            k_p = 0.01
+
+            v = 0.2  # Constant linear velocity
+            w = k_d*(-self.theta) #+ k_p*(45 - self.dist) # Angular velocity
+            
 
             # Publish to \cmd_vel
             vel_msg = Twist()
@@ -257,6 +254,6 @@ class DuckiebotCamera:
             cv2.destroyAllWindows() 
 
 if __name__ == "__main__":
-    rospy.init_node('duckietown_camera_node', anonymous=False)
-    duckiecam = DuckiebotCamera(show_cam=True, window_param=(120,100))
+    rospy.init_node('duckietown_camera_controller', anonymous=False)
+    duckiecam = DuckiebotCamera(show_cam=True, window_param=(150,150))
     rospy.spin()
