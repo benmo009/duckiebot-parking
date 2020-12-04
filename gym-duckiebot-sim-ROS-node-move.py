@@ -65,7 +65,7 @@ class DuckiebotSim(object):
         self.action = self.basic_control()
         # Grab image from simulation and apply the action
         obs, reward, done, info = self.env.step(self.action)
-        rospy.loginfo('[%s] step_count = %s, reward=%.3f' % (self.node_name, self.env.unwrapped.step_count, reward))
+        #rospy.loginfo('[%s] step_count = %s, reward=%.3f' % (self.node_name, self.env.unwrapped.step_count, reward))
         
         image = cv2.cvtColor(obs, cv2.COLOR_BGR2RGB) # Correct color for cv2
 
@@ -99,6 +99,8 @@ class DuckiebotSim(object):
         lane_pose = self.env.get_lane_pos2(self.env.cur_pos, self.env.cur_angle)
         distance_to_road_center = lane_pose.dist 
         angle_from_straight_in_rads = lane_pose.angle_rad 
+        rospy.loginfo(" dist = %.2f" %(distance_to_road_center))
+        rospy.loginfo("theta = %.2f" %(angle_from_straight_in_rads))
 
         k_p = 10
         k_d = 5
