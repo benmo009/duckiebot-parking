@@ -99,7 +99,7 @@ def callback(data):
         cv2.destroyAllWindows()
 
 if __name__ == '__main__': 
-    rospy.init_node('duckietown_camera_node', anonymous=False)
+    rospy.init_node('duckietown_camera_bin', anonymous=False)
     sub = rospy.Subscriber("/image_raw",Image,callback)
     pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
     rospy.spin()
