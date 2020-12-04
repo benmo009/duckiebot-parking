@@ -64,7 +64,7 @@ class DuckiebotSim(object):
     def grabAndPublish(self,publisher):
         # Grab image from simulation and apply the action
         obs, reward, done, info = self.env.step(self.action)
-        rospy.loginfo('[%s] step_count = %s, reward=%.3f' % (self.node_name, self.env.unwrapped.step_count, reward))
+        #rospy.loginfo('[%s] step_count = %s, reward=%.3f' % (self.node_name, self.env.unwrapped.step_count, reward))
         
         image = cv2.cvtColor(obs, cv2.COLOR_BGR2RGB) # Correct color for cv2
 
@@ -88,6 +88,8 @@ class DuckiebotSim(object):
     def cbCmd(self,cmd_msg):
         linear_vel = cmd_msg.linear.x # Forward Velocity [-1 1]
         angular_vel = cmd_msg.angular.z # Steering angle [-1 1]
+        rospy.loginfo(" Linear Velocity = %.2f" % (linear_vel))
+        rospy.loginfo("Angular Velocity = %.2f" % (angular_vel))
         self.action = np.array([linear_vel, angular_vel])
         
     def onShutdown(self):
