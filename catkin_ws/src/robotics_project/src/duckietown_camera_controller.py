@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
+from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Image
 
@@ -21,6 +22,9 @@ class DuckiebotCamera:
         # Initialize subscriber Node
         #self.sub = rospy.Subscriber("/image_raw", Image, self.cam_callback)
         self.sub = rospy.Subscriber("/image_rect_color", Image, self.cam_callback)
+        self.steer_sub = rospy.Subscriber("/obstacle_steering", Float32, self.steer_callback)
+
+        self.obstacle_error = 0
 
         # Initialize Publisher Node
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=0)
@@ -236,14 +240,21 @@ class DuckiebotCamera:
             self.estimate_position()            
             rospy.loginfo('Estimated dist = {:.2f}'.format(self.dist))
             rospy.loginfo('Estimated theta = {:.2f}'.format(self.theta))
+            rospy.loginfo('Obstacle error = {:.2f}'.format(self.obstacle_error))
 
             # Use the estimates to compute steering 
             action = Twist()
             k_d = 0.3
             k_p = 0.01
 
+            k_p_obs = 0.002
+
             v = 0.2  # Constant linear velocity
-            w = k_d*(-self.theta) #+ k_p*(45 - self.dist) # Angular velocity
+            if self.obstacle_error == 0:
+                w = k_d*(-self.theta) #+ k_p*(45 - self.dist) # Angular velocity
+            else:
+                w = k_p_obs * self.obstacle_error
+                rospy.loginfo('Obstacle omiega = {:.2f}'.format(w))
             
 
             # Publish to \cmd_vel
@@ -258,6 +269,10 @@ class DuckiebotCamera:
             
         if cv2.waitKey(1)!=-1:     #Burak, needs to modify this line to work on your computer, THANKS!
             cv2.destroyAllWindows() 
+
+    def steer_callback(self, msg):
+        self.obstacle_error = msg.data
+
 
     def shutdown():
         vel_msg = Twist()
