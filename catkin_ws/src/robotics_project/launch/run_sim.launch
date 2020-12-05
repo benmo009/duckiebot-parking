@@ -4,4 +4,13 @@
   <node pkg="image_proc" type="image_proc" name="image_proc" />
   <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robotics_project)/launch/config/tf_tree.rviz" />
+
+  <node type="mux" name="twist_mux" pkg="topic_tools" args="cmd_vel twist_lane twist_parking mux:=twist_mux" />
+  <node type="driving_parking_selector.py" name="sel" pkg="robotics_project"/>
+  <node type="park_at_pose.py" name="parking" pkg="robotics_project" >
+    <remap from="cmd_vel" to="twist_parking" />
+  </node>
+  <node type="duckietown_camera_controller.py" name="lane" pkg="robotics_project" >
+    <remap from="cmd_vel" to="twist_lane" />
+  </node>
 </launch>

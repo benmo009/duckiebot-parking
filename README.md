@@ -40,9 +40,15 @@ Start the keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist
 
 Start the twist to motors node on the dukiebot with `$ python twist_to_motors.py` (In the teleop folder)
 
-## Running Parking Autonomous Code on Simulator
+## Running Lane Following and Parking Autonomous Code on Simulator
 
 First start ros with `$ roscore`
+
+Make sure to setup the sim with the custom map following the instructions above
+
+Run apriltags_ros with `$ roslaunch robotics_project apriltag_sim.launch`
+
+This just launches the apriltag node, but was kept seperate to be able to stop and start it to change settings without needing to restart everything else.
 
 Start the sim and supporting nodes with `$ roslaunch robotics_project run_sim.launch`. This launches the folling nodes:
 
@@ -51,14 +57,12 @@ Start the sim and supporting nodes with `$ roslaunch robotics_project run_sim.la
 - image_proc: Uses camera parameters to rectify the image
 - rqt_gui: Can be used to view the image streams, set it to '/tag_detections_image' to view the apriltag output
 - rviz: Opens rviz with the transform tree showing
+- mux: Selects between the parking twist and the lane following tesit
+- driving_parking_selector.py: Checks if the parking tag is close enough to park. Sends commands to the mux to select either lane following or parking
+- park_at_pose.py: Sends twist commands to park in front of the apriltag, based on transfroms from statc_tf2_broadcaster.py
+- duckietown_camera_controller.py: Sends twist commands to follow the lane
 
-Run apriltags_ros with `$ roslaunch robotics_project apriltag.launch`
 
-This just launches the apriltag node, but was kept seperate to be able to stop and start it to change settings without needing to restart everything else.
-
-Start the keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist_keyboard.py`. Drive the duckiebot around so that the parking sign is in the camera view.
-
-Run `$ rosrun robotics_project park_at_pose.py`. If the parking sign is in view, the duckiebot should drive to the parking spot. 
 
 ## Visual Lane Following
 

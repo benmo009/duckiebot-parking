@@ -63,10 +63,8 @@ class DriveToPose:
             delta_theta = -eul_rad[2]
 
             # check if within stopping distance
-            c=.25
-            #dist = math.sqrt(delta_x**2 + delta_y**2 + c*delta_theta**2)
             dist = math.sqrt(delta_x**2 + delta_y**2)
-            print(dist)
+            #print(dist)
 
             vel_msg = Twist()
             if dist > 0.05:
@@ -75,9 +73,12 @@ class DriveToPose:
                 alpha = self.min_angle_diff(math.atan2(delta_y, delta_x), eul_rad[2])
                 beta = self.min_angle_diff(-eul_rad[2], alpha)
 
-                kp = 1
-                ka = 2
+                kp = .5
+                ka = 1
                 kb = -.1
+
+                #print('alpha: ' + str(alpha))
+                #print('beta: ' + str(beta))
 
                 v = kp*rho
                 omega = (ka*alpha+kb*beta)
@@ -89,7 +90,7 @@ class DriveToPose:
                 vel_msg.angular.z = 0
             self.pub_vel.publish(vel_msg)
 
-            print('-----')
+            #print('-----')
 
             rate.sleep()
 

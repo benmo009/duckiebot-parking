@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import rospy
 import numpy as np 
 import cv2
@@ -17,7 +19,8 @@ class DuckiebotCamera:
         rospy.loginfo("Initializing Node: [%s]" %(self.node_name))
 
         # Initialize subscriber Node
-        self.sub = rospy.Subscriber("/image_raw", Image, self.cam_callback)
+        #self.sub = rospy.Subscriber("/image_raw", Image, self.cam_callback)
+        self.sub = rospy.Subscriber("/image_rect_color", Image, self.cam_callback)
 
         # Initialize Publisher Node
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=0)
@@ -179,16 +182,19 @@ class DuckiebotCamera:
         # Filter out the yellow dotted line 
         self.get_binary_image()
 
-        # Estimate the lane as a 1 dimensional polynomial
-        self.estimate_lane()
+        try:
+            # Estimate the lane as a 1 dimensional polynomial
+            self.estimate_lane()
 
-        # Compute the angle from the estimated line
-        # positive angle -> turn right
-        # negative angle -> turn left
-        self.compute_theta()
-        
-        # Calculate distance from center of lane
-        self.compute_dist()
+            # Compute the angle from the estimated line
+            # positive angle -> turn right
+            # negative angle -> turn left
+            self.compute_theta()
+            
+            # Calculate distance from center of lane
+            self.compute_dist()
+        except ValueError:
+            print('No points detected')
 
 
     def draw_estimate(self):
@@ -253,7 +259,12 @@ class DuckiebotCamera:
         if cv2.waitKey(1)!=-1:     #Burak, needs to modify this line to work on your computer, THANKS!
             cv2.destroyAllWindows() 
 
+    def shutdown():
+        vel_msg = Twist()
+        self.pub.publish(vel_msg)
+
 if __name__ == "__main__":
     rospy.init_node('duckietown_camera_controller', anonymous=False)
     duckiecam = DuckiebotCamera(show_cam=True, window_param=(150,150))
+    rospy.on_shutdown(duckiecam.shutdown)
     rospy.spin()
