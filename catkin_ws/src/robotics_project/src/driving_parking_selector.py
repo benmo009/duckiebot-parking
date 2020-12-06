@@ -43,7 +43,9 @@ class ParkingDetection:
             print('dist: ' + str(dist))
             #rospy.loginfo(msg)
 
-            if current_time.secs - transform_time.secs <= 1 and dist < 0.6: # and within distance
+            #if current_time.secs - transform_time.secs <= 1 and dist < 0.6: # and within distance
+            #if current_time.secs - transform_time.secs <= 1 and dist < 0.7: # and within distance
+            if current_time.secs - transform_time.secs <= 1 and dist < 0.7: # and within distance
                 print('Parking spot in view')
                 #rospy.loginfo('Parking spot in view')
                 self.twist_mux_service('twist_parking')

@@ -4,7 +4,6 @@
   <node pkg="cv_camera" type="cv_camera_node" name="cv_camera" >
     <param name="rate" type="int" value="15" />
   </node>
-  <!--<node pkg="image_proc" type="image_proc" name="image_proc" ns="cv_camera" >-->
   <node pkg="image_proc" type="image_proc" name="image_proc" ns="image_resize_nodelet" >
     <param name="queue_size" type="int" value="30" />
   </node>
@@ -18,4 +17,18 @@
   </node>
 
   <include file="$(find robotics_project)/launch/apriltag_physical.launch" />
+
+  <node type="mux" name="twist_mux" pkg="topic_tools" args="cmd_vel twist_lane twist_parking mux:=twist_mux" />
+  <node type="driving_parking_selector.py" name="sel" pkg="robotics_project" />
+  <node type="park_at_pose_physical.py" name="parking" pkg="robotics_project" >
+    <remap from="cmd_vel" to="twist_parking" />
+  </node>
+  <node type="physical_camera_controller.py" name="lane" pkg="robotics_project" >
+    <remap from="cmd_vel" to="twist_lane" />
+    <remap from="image_rect_color" to="image_resize_nodelet/image_rect_color" />
+  </node>
+  
+  <node type="obstacle_avoidance.py" name="obstacle" pkg="robotics_project" output="screen" >
+    <remap from="camera_info" to="/image_resize_nodelet/camera_info" />
+  </node>
 </launch>

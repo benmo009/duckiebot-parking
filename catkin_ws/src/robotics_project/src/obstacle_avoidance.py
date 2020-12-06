@@ -78,9 +78,9 @@ class ParkingDetection:
             print('x: ' + str(x_img))
             print('y: ' + str(y_img))
 
-            if current_time.secs - transform_time.secs <= 1 and dist < 0.3: # and within distance
-                #print('Obstacle in view')
-                if (x > self.width/2):
+            if current_time.secs - transform_time.secs < 1 and dist < 0.3: # and within distance
+                print('Obstacle in view')
+                if (x_img > self.width/2):
                     target = 7*self.width/8
                 else:
                     target = self.width/8
@@ -88,7 +88,7 @@ class ParkingDetection:
                 self.pub_steer.publish(error)
                 print('error: ' + str(error))
             else:
-                #print('Obstacle not in view')
+                print('Obstacle not in view')
                 self.pub_steer.publish(0)
 
 

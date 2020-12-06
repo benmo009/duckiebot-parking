@@ -84,7 +84,11 @@ class DriveToPose:
 
                 kp = 0.45
                 ka = 1
-                kb = -0.8
+                kb = -1
+
+                #kp = 0.35
+                #ka = 1.5
+                #kb = -0.8
 
                 v = kp*rho
                 omega = (ka*alpha+kb*beta)
