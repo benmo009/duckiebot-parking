@@ -56,7 +56,7 @@ class DuckiebotCamera:
 
         self.dist = None
         self.theta = None
-        self.obstacle_error = None
+        self.obstacle_error = 0
 
         # Filter for getting the yellow dotted lines
         if filter_lower is None:
@@ -306,8 +306,7 @@ class DuckiebotCamera:
             if self.theta is not None and self.dist is not None:
                 rospy.loginfo('Estimated dist = {:.2f}'.format(self.dist))
                 rospy.loginfo('Estimated theta = {:.2f}'.format(self.theta))
-                if self.obstacle_error is not None:
-                    rospy.loginfo('Obstacle error = {:.2f}'.format(self.obstacle_error))
+                rospy.loginfo('Obstacle error = {:.2f}'.format(self.obstacle_error))
 
                 # Use the estimates to compute steering 
                 action = Twist()
@@ -318,11 +317,11 @@ class DuckiebotCamera:
 
                 #v = 0.2  # Constant linear velocity
                 v=self.v
-                if self.obstacle_error is None or self.obstacle_error == 0:
-                    w = self.k_d*(-self.theta) #+ self.k_p*(45 - self.dist) # Angular velocity
-                else:
-                    w = self.k_p_obs * self.obstacle_error
-                    rospy.loginfo('Obstacle omega = {:.2f}'.format(w))
+                w = self.k_d*(-self.theta) #+ self.k_p*(45 - self.dist) # Angular velocity
+                if self.obstacle_error != 0:
+                    w_obs = self.k_p_obs * self.obstacle_error
+                    rospy.loginfo('Obstacle omega = {:.2f}'.format(w_obs))
+                    w = w + w_obs
                 
 
                 # Publish to \cmd_vel
