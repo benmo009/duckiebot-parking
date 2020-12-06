@@ -199,17 +199,20 @@ class DuckiebotCamera:
         x = self.quadratic_formula(self.p_quad - y)
 
         if x != -1:
-            # Take the solution that is closer to the points in binary image
-            avg_distance = np.array([0, 0])
-            # Compute each solution's distance to the n points at the hightes y value
-            for point in self.bin_points[-n:-1,:]:
-                avg_distance[0] += np.linalg.norm(point - [y, x[0]])
-                avg_distance[1] += np.linalg.norm(point - [y, x[1]])
+            try:
+                # Take the solution that is closer to the points in binary image
+                avg_distance = np.array([0, 0])
+                # Compute each solution's distance to the n points at the hightes y value
+                for point in self.bin_points[-n:-1,:]:
+                    avg_distance[0] += np.linalg.norm(point - [y, x[0]])
+                    avg_distance[1] += np.linalg.norm(point - [y, x[1]])
 
-            avg_distance = avg_distance / n
+                avg_distance = avg_distance / n
 
-            # Take the point with smaller average distance
-            x = x[np.argmin(avg_distance)]        # Take the solution that is closer to the points in binary image
+                # Take the point with smaller average distance
+                x = x[np.argmin(avg_distance)]        # Take the solution that is closer to the points in binary image
+            except:
+                x = (y - self.p_lin[0]) / self.p_lin[1]
 
         else:
             # The solution to the quadratic is imaginary, so use the linear estimate
@@ -317,11 +320,12 @@ class DuckiebotCamera:
 
                 #v = 0.2  # Constant linear velocity
                 v=self.v
-                w = self.k_d*(-self.theta) #+ self.k_p*(45 - self.dist) # Angular velocity
+                #w = self.k_d*(-self.theta) #+ self.k_p*(45 - self.dist) # Angular velocity
+                w = self.k_d*(-self.theta) + self.k_p*(self.dist) # Angular velocity
                 if self.obstacle_error != 0:
                     w_obs = self.k_p_obs * self.obstacle_error
                     rospy.loginfo('Obstacle omega = {:.2f}'.format(w_obs))
-                    w = w + w_obs
+                    w = w_obs
                 
 
                 # Publish to \cmd_vel

@@ -23,12 +23,12 @@
   <node type="park_at_pose_physical.py" name="parking" pkg="robotics_project" >
     <remap from="cmd_vel" to="twist_parking" />
   </node>
-  <node type="physical_camera_controller.py" name="lane" pkg="robotics_project" >
+  <node type="physical_camera_controller.py" name="lane" pkg="robotics_project" output="screen">
     <remap from="cmd_vel" to="twist_lane" />
     <remap from="image_rect_color" to="image_resize_nodelet/image_rect_color" />
   </node>
   
-  <node type="obstacle_avoidance.py" name="obstacle" pkg="robotics_project" output="screen" >
+  <node type="obstacle_avoidance.py" name="obstacle" pkg="robotics_project" args="led" output="screen">
     <remap from="camera_info" to="/image_resize_nodelet/camera_info" />
   </node>
 </launch>

@@ -2,6 +2,9 @@
 
 import math
 import numpy as np
+import sys
+
+from rgb_led import RGB_LED
 
 import rospy
 from std_msgs.msg import Float32
@@ -11,7 +14,8 @@ import tf2_ros
 
 class ParkingDetection:
 
-    def __init__(self):
+    def __init__(self, use_leds = False):
+
         rospy.init_node('parking_detection', anonymous=True)
 
         rospy.on_shutdown(self.shutdown)
@@ -19,7 +23,22 @@ class ParkingDetection:
         self.cam_sub = rospy.Subscriber('/camera_info', CameraInfo, self.cam_info_callback)
         self.pub_steer = rospy.Publisher('/obstacle_steering', Float32, queue_size=10)
 
+        self.use_leds = use_leds
+
         self.P = None
+
+        direction = 0
+
+        if self.use_leds:
+            self.led = RGB_LED()
+            # rear indicator LEDS
+            self.led.setRGB(3, [1,1,1])
+            self.led.setRGB(1, [1,1,1])
+
+            # turn on front LEDS
+            self.led.setRGB(0, [1,1,1])
+            self.led.setRGB(2, [1,1,1])
+            self.led.setRGB(4, [1,1,1])
 
         # Remember up to 1 second in the past
         tfBuffer = tf2_ros.Buffer()
@@ -27,35 +46,6 @@ class ParkingDetection:
 
         rate = rospy.Rate(2.0)
         while not rospy.is_shutdown():
-            '''
-            # Get transform from bot to yield sign
-            try:
-                transform = tfBuffer.lookup_transform('yield_sign', 'duckiebot', rospy.Time(0))
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                rate.sleep()
-                continue
-
-            transform_time = transform.header.stamp
-            current_time = rospy.Time.now()
-
-            x = transform.transform.translation.x
-            y = transform.transform.translation.y
-            theta = math.atan2(x, -y)
-
-            dist = math.sqrt(x**2 + y**2)
-            print('dist: ' + str(dist))
-
-            print('x: ' + str(x))
-            print('y: ' + str(y))
-            print('theta: ' + str(math.degrees(theta)))
-
-            if current_time.secs - transform_time.secs <= 1 and dist < 0.3: # and within distance
-                #print('Obstacle in view')
-                self.pub_steer.publish(theta)
-            else:
-                #print('Obstacle not in view')
-                self.pub_steer.publish(0)
-            '''
 
             try:
                 transform = tfBuffer.lookup_transform('yield_sign', 'camera', rospy.Time(0))
@@ -78,22 +68,50 @@ class ParkingDetection:
             print('x: ' + str(x_img))
             print('y: ' + str(y_img))
 
-            if current_time.secs - transform_time.secs < 1 and dist < 0.3: # and within distance
+            if current_time.secs - transform_time.secs < 2 and dist < 0.2: # and within distance
                 print('Obstacle in view')
-                if (x_img > self.width/2):
+
+                if direction == 1 or ((x_img > self.width/2) and direction == 0):
+                    direction = 1
                     target = 7*self.width/8
-                else:
+                    #target = self.width
+                    error = x_img - target
+                    if error > 0:
+                        error = 0
+                        if self.use_leds:
+                            self.led.setRGB(3, [1,1,1])
+                    else:
+                        if self.use_leds:
+                            self.led.setRGB(3, [1,0,0])
+                            self.led.setRGB(1, [1,1,1])
+
+                elif drection == -1 or ((x_im < self.width/2) and direction == 0):
+                    direction = -1
                     target = self.width/8
-                error = x_img - target
+                    #target = 0
+                    error = x_img - target
+                    if error < 0:
+                        error = 0
+                        if self.use_leds:
+                            self.led.setRGB(1, [1,1,1])
+                    else:
+                        if self.use_leds:
+                            self.led.setRGB(1, [1,0,0])
+                            self.led.setRGB(3, [1,1,1])
+                #error = x_img - target
                 self.pub_steer.publish(error)
                 print('error: ' + str(error))
             else:
+                direction = 0
+                if self.use_leds:
+                    self.led.setRGB(3, [1,1,1])
+                    self.led.setRGB(1, [1,1,1])
                 print('Obstacle not in view')
                 self.pub_steer.publish(0)
 
 
             print('---')
-            rate.sleep()
+            #rate.sleep()
 
     def cam_info_callback(self, msg):
         self.P = np.array(msg.P).reshape(3,4)
@@ -105,4 +123,8 @@ class ParkingDetection:
         
 
 if __name__ == "__main__":
-    p = ParkingDetection()
+    use_leds = False
+    if (sys.argv > 1):
+        if 'led' in sys.argv[1]:
+            use_leds = True
+    p = ParkingDetection(use_leds=use_leds)
