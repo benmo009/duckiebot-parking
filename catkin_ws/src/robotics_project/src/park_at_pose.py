@@ -75,7 +75,7 @@ class DriveToPose:
 
                 kp = .5
                 ka = 1
-                kb = -.1
+                kb = -.2
 
                 #print('alpha: ' + str(alpha))
                 #print('beta: ' + str(beta))

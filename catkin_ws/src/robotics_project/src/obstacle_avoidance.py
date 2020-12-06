@@ -4,7 +4,6 @@ import math
 import numpy as np
 import sys
 
-from rgb_led import RGB_LED
 
 import rospy
 from std_msgs.msg import Float32
@@ -30,6 +29,9 @@ class ParkingDetection:
         direction = 0
 
         if self.use_leds:
+            # Only import if we are running on raspberry pi
+            # error otherwise
+            from rgb_led import RGB_LED
             self.led = RGB_LED()
             # rear indicator LEDS
             self.led.setRGB(3, [1,1,1])
@@ -85,7 +87,7 @@ class ParkingDetection:
                             self.led.setRGB(3, [1,0,0])
                             self.led.setRGB(1, [1,1,1])
 
-                elif drection == -1 or ((x_im < self.width/2) and direction == 0):
+                elif direction == -1 or ((x_img < self.width/2) and direction == 0):
                     direction = -1
                     target = self.width/8
                     #target = 0
@@ -124,7 +126,7 @@ class ParkingDetection:
 
 if __name__ == "__main__":
     use_leds = False
-    if (sys.argv > 1):
+    if (len(sys.argv) > 1):
         if 'led' in sys.argv[1]:
             use_leds = True
     p = ParkingDetection(use_leds=use_leds)

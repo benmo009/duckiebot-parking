@@ -120,18 +120,13 @@ class DuckiebotCamera:
             warped_msg = CvBridge().cv2_to_imgmsg(self.img_warped, encoding="bgr8")
             hsv_msg = CvBridge().cv2_to_imgmsg(img_hsv, encoding="bgr8")
             filtered_msg = CvBridge().cv2_to_imgmsg(img_filtered, encoding="mono8")
-            bin_msg = CvBridge().cv2_to_imgmsg(self.img_bin, encoding="mono8")
+            #bin_msg = CvBridge().cv2_to_imgmsg(self.img_bin, encoding="mono8")
 
 
-            print("here")
             self.hsv_image_pub.publish(hsv_msg)
-            print("here2")
             self.warped_image_pub.publish(warped_msg)
-            print("here3")
             self.filtered_image_pub.publish(filtered_msg)
-            print("here4")
-            self.binary_image_pub.publish(bin_msg)
-            print("here5")
+            #self.binary_image_pub.publish(bin_msg)
 
 
 
@@ -361,6 +356,6 @@ class DuckiebotCamera:
 
 if __name__ == "__main__":
     rospy.init_node('duckietown_camera_controller', anonymous=False)
-    duckiecam = DuckiebotCamera(show_cam=True, window_param=(150,150))
+    duckiecam = DuckiebotCamera(show_cam=True, window_param=(150,150), show_processing_ros=True, show_output_ros=True, k_p=0)
     rospy.on_shutdown(duckiecam.shutdown)
     rospy.spin()
