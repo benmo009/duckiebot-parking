@@ -13,4 +13,6 @@
   <node type="duckietown_camera_controller.py" name="lane" pkg="robotics_project" >
     <remap from="cmd_vel" to="twist_lane" />
   </node>
+
+  <node type="obstacle_avoidance.py" name="obstacle_avoidance" pkg="robotics_project" />
 </launch>

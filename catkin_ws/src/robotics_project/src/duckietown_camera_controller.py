@@ -5,32 +5,58 @@ import numpy as np
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
+from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Image
 
 import math
 import time
 
+import traceback
 
 class DuckiebotCamera:
-    def __init__(self, show_cam=False, crop_val=120, warp_param=(270,350), window_param=(70,50)):
+    def __init__(self, show_cam=False, show_processing_ros=False, show_output_ros=False, crop_val=120, warp_param=(270,350), window_param=(70,50), filter_lower=None, filter_upper=None, vel=0.2, k_p=0.01, k_d=0.3, k_p_obs=0.002):
         # Initialize ROS Node
         self.node_name = rospy.get_name()
         rospy.loginfo("Initializing Node: [%s]" %(self.node_name))
 
+        self.show_processing_ros = show_processing_ros
+        self.show_output_ros = show_output_ros
+
+        self.stopping = False
+
         # Initialize subscriber Node
         self.sub = rospy.Subscriber("/image_raw", Image, self.cam_callback)
-        #self.sub = rospy.Subscriber("/image_rect_color", Image, self.cam_callback)
+        self.sub = rospy.Subscriber("/image_rect_color", Image, self.cam_callback)
+        self.steer_sub = rospy.Subscriber("/obstacle_steering", Float32, self.steer_callback)
+
 
         # Initialize Publisher Node
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=0)
+        if self.show_processing_ros:
+            self.warped_image_pub = rospy.Publisher("/warped_image", Image, queue_size=0)
+            self.hsv_image_pub = rospy.Publisher("/hsv_image", Image, queue_size=0)
+            self.filtered_image_pub = rospy.Publisher("/filtered_image", Image, queue_size=0)
+            self.binary_image_pub = rospy.Publisher("/bin_image", Image, queue_size=0)
+
+        if self.show_output_ros:
+            self.linear_image_pub = rospy.Publisher("/linear_image", Image, queue_size=0)
 
         # Parameters
+
+        self.v = vel
+        self.k_p = k_p
+        self.k_d = k_d
+        self.k_p_obs = k_p_obs
         
         self.show_cam = show_cam
-        self.crop_val = 120
+        self.crop_val = crop_val
         self.warp_param= warp_param
         self.window_param = window_param
+
+        self.dist = None
+        self.theta = None
+        self.obstacle_error = 0
 
         # Filter for getting the yellow dotted lines
         self.yellow_lower = np.array([20, 100, 150])
@@ -40,8 +66,6 @@ class DuckiebotCamera:
         self.red_upper = np.array( [[160, 100, 100], [179, 255, 255]] )
 
         self.at_intersection = False
-        self.prev_theta = 0  # Use for derivative control
-        self.sum_theta = 0  # Use for integral control
 
 
 
@@ -91,6 +115,18 @@ class DuckiebotCamera:
         img_bin = img_filtered / 255
 
         return img_bin
+
+        if self.show_processing_ros:
+            warped_msg = CvBridge().cv2_to_imgmsg(self.img_warped, encoding="bgr8")
+            hsv_msg = CvBridge().cv2_to_imgmsg(img_hsv, encoding="bgr8")
+            filtered_msg = CvBridge().cv2_to_imgmsg(img_filtered, encoding="mono8")
+            #bin_msg = CvBridge().cv2_to_imgmsg(self.img_bin, encoding="mono8")
+
+
+            self.hsv_image_pub.publish(hsv_msg)
+            self.warped_image_pub.publish(warped_msg)
+            self.filtered_image_pub.publish(filtered_msg)
+            #self.binary_image_pub.publish(bin_msg)
 
 
 
@@ -165,17 +201,20 @@ class DuckiebotCamera:
         #x = self.quadratic_formula(self.p_quad - y)
         x =-1
         if x != -1:
-            # Take the solution that is closer to the points in binary image
-            avg_distance = np.array([0, 0])
-            # Compute each solution's distance to the n points at the hightes y value
-            for point in self.bin_points[-n:-1,:]:
-                avg_distance[0] += np.linalg.norm(point - [y, x[0]])
-                avg_distance[1] += np.linalg.norm(point - [y, x[1]])
+            try:
+                # Take the solution that is closer to the points in binary image
+                avg_distance = np.array([0, 0])
+                # Compute each solution's distance to the n points at the hightes y value
+                for point in self.bin_points[-n:-1,:]:
+                    avg_distance[0] += np.linalg.norm(point - [y, x[0]])
+                    avg_distance[1] += np.linalg.norm(point - [y, x[1]])
 
-            avg_distance = avg_distance / n
+                avg_distance = avg_distance / n
 
-            # Take the point with smaller average distance
-            x = x[np.argmin(avg_distance)]        # Take the solution that is closer to the points in binary image
+                # Take the point with smaller average distance
+                x = x[np.argmin(avg_distance)]        # Take the solution that is closer to the points in binary image
+            except:
+                x = (y - self.p_lin[0]) / self.p_lin[1]
 
         else:
             # The solution to the quadratic is imaginary, so use the linear estimate
@@ -220,6 +259,7 @@ class DuckiebotCamera:
             # Calculate distance from center of lane
             self.compute_dist()
         except ValueError:
+            #traceback.print_exc()
             print('No points detected')
 
 
@@ -250,50 +290,91 @@ class DuckiebotCamera:
         if cv2.waitKey(1)!=-1:     
             cv2.destroyAllWindows() 
 
+    def ros_estimate(self):
+        (left, right) = self.warp_param
+
+        img_lin = np.copy(self.img_warped)
+        p1 = ( left, int(self.p_lin(left)) )
+        p2 = ( right, int(self.p_lin(right)) )
+        cv2.line(img_lin, p1, p2, (0, 0, 255), 5)
+
+        (img_h, img_w, _) = self.img_warped.shape
+        img_lin = cv2.warpPerspective(img_lin, self.Minv, (img_w, img_h))
+
+        linear_msg = CvBridge().cv2_to_imgmsg(img_lin, encoding="bgr8")
+
+        self.linear_image_pub.publish(linear_msg)
+
+
 
     def cam_callback(self, data):
         # Convert images to OpenCV image
         bridge=CvBridge()  # CV bridge to convert image to OpenCV image
         self.img = bridge.imgmsg_to_cv2(data, "8UC3")
 
-        # if self.show_cam:
-        cv2.namedWindow("Image")
+        #msg = CvBridge().cv2_to_imgmsg(self.img, encoding="bgr8")
+        #self.image_pub.publish(msg)
+
+        if self.show_cam:
+            cv2.namedWindow("Image")
 
         if (self.img is not None):    
             # Use the image to estimate car pos
             self.estimate_position()            
-            rospy.loginfo('Estimated dist = {:.2f}'.format(self.dist))
-            rospy.loginfo('Estimated theta = {:.2f}'.format(self.theta))
+            if self.theta is not None and self.dist is not None:
+                rospy.loginfo('Estimated dist = {:.2f}'.format(self.dist))
+                rospy.loginfo('Estimated theta = {:.2f}'.format(self.theta))
+                rospy.loginfo('Obstacle error = {:.2f}'.format(self.obstacle_error))
 
-            # Use the estimates to compute steering 
-            action = Twist()
-            k_d = 0.55
+                # Use the estimates to compute steering 
+                action = Twist()
+                #k_d = 0.3
+                #k_p = 0.01
 
-            v = 0.2 #0.005 * (45 - self.dist) / self.theta  # Constant linear velocity
-            w = k_d*(-self.theta)  # Angular velocity
+                #k_p_obs = 0.002
+
+                #v = 0.2  # Constant linear velocity
+                v=self.v
+                #w = self.k_d*(-self.theta) #+ self.k_p*(45 - self.dist) # Angular velocity
+                w = self.k_d*(-self.theta) + self.k_p*(self.dist) # Angular velocity
+                if self.obstacle_error != 0:
+                    w_obs = self.k_p_obs * self.obstacle_error
+                    rospy.loginfo('Obstacle omega = {:.2f}'.format(w_obs))
+                    w = w_obs
+                            
+                # Publish to \cmd_vel
+                vel_msg = Twist()
+                vel_msg.linear.x = v
+                vel_msg.angular.z = w
+                if not self.stopping:
+                    self.pub.publish(vel_msg)
+
+                # Show image
+                if self.show_cam:
+                    self.draw_estimate()
+
+                if self.show_output_ros:
+                    self.ros_estimate()
+
             
+        if self.show_cam:
+            if cv2.waitKey(1)!=-1:     #Burak, needs to modify this line to work on your computer, THANKS!
+                cv2.destroyAllWindows() 
 
-            # Publish to \cmd_vel
-            vel_msg = Twist()
-            vel_msg.linear.x = v
-            vel_msg.angular.z = w
-            self.pub.publish(vel_msg)
-
-            # Show image
-            if self.show_cam:
-                self.draw_estimate()
-            
-        if cv2.waitKey(1)!=-1:     #Burak, needs to modify this line to work on your computer, THANKS!
-            cv2.destroyAllWindows() 
+    def steer_callback(self, msg):
+        self.obstacle_error = msg.data
 
 
     def shutdown(self):
         vel_msg = Twist()
+        vel_msg.linear.x = 0
+        vel_msg.angular.z = 0
         self.pub.publish(vel_msg)
+        self.stopping = True
 
 
 if __name__ == "__main__":
     rospy.init_node('duckietown_camera_controller', anonymous=False)
-    duckiecam = DuckiebotCamera(show_cam=True, window_param=(30,150))
+    duckiecam = DuckiebotCamera(show_cam=True, window_param=(30,150), show_processing_ros=True, show_output_ros=True, k_p=0)
     rospy.on_shutdown(duckiecam.shutdown)
     rospy.spin()
