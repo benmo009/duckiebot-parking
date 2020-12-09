@@ -19,8 +19,8 @@ class DuckiebotCamera:
         rospy.loginfo("Initializing Node: [%s]" %(self.node_name))
 
         # Initialize subscriber Node
-        #self.sub = rospy.Subscriber("/image_raw", Image, self.cam_callback)
-        self.sub = rospy.Subscriber("/image_rect_color", Image, self.cam_callback)
+        self.sub = rospy.Subscriber("/image_raw", Image, self.cam_callback)
+        #self.sub = rospy.Subscriber("/image_rect_color", Image, self.cam_callback)
 
         # Initialize Publisher Node
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=0)
@@ -33,10 +33,16 @@ class DuckiebotCamera:
         self.window_param = window_param
 
         # Filter for getting the yellow dotted lines
-        self.filter_lower = np.array([20, 100, 150])
-        self.filter_upper = np.array([30, 255, 255])
+        self.yellow_lower = np.array([20, 100, 150])
+        self.yellow_upper = np.array([30, 255, 255])
 
-        # Initialize rate
+        self.red_lower = np.array( [[0, 100, 100], [160, 100, 100]] )
+        self.red_upper = np.array( [[160, 100, 100], [179, 255, 255]] )
+
+        self.at_intersection = False
+        self.prev_theta = 0  # Use for derivative control
+        self.sum_theta = 0  # Use for integral control
+
 
 
     # Function to solve quadratic function
@@ -74,38 +80,47 @@ class DuckiebotCamera:
 
 
     # Takes an image and returns a filtered binary image
-    def get_binary_image(self):
+    def get_binary_image(self, filter_lower, filter_upper):
         # Convert to HSV color space
         img_hsv = cv2.cvtColor(self.img_warped, cv2.COLOR_BGR2HSV)
 
         # Filter out the specified color
-        img_filtered = cv2.inRange(img_hsv, self.filter_lower, self.filter_upper)
+        img_filtered = cv2.inRange(img_hsv, filter_lower, filter_upper)
 
         # Divide by 255 to convert to binary
-        self.img_bin = img_filtered / 255
+        img_bin = img_filtered / 255
+
+        return img_bin
 
 
 
     # Takes binary image and estimates the center lane line
     def estimate_lane(self):
         (window_h, window_w) = self.window_param
+
+        if self.at_intersection:
+            window_h = 180
         
         self.bin_points = np.argwhere(self.img_bin == 1)
 
         #start_pos = self.bin_points[-1,0]
         start_pos = np.max(self.bin_points[:,0])
+        #start_pos = self.bin_points[start_pos,:]
+
 
         # Get the middle point for each row
         # Only look at points within the window dimensions
         # For each row, shift the window to be centered at the previous middle point
         points = []
         middle = 0
-        left = 0
+        # Limit the window to look for the first row to these values
+        left = 225
+        right = 350
         for i in range(window_h):
             y = start_pos - i
             if i == 0:
                 # For the first row, look in the entire row
-                row = self.img_bin[y,::]
+                row = self.img_bin[y,left:right]
                 
             else:
                 # Compute left and right bounds to look in
@@ -127,9 +142,9 @@ class DuckiebotCamera:
         # Fit the points to a 1-degree polynomial
         self.p_lin = np.polyfit(points[:,1], points[:,0], 1)
         self.p_lin = np.poly1d(self.p_lin)
-        # Fit the points to a 2-degree polynomial
-        self.p_quad = np.polyfit(points[:,1], points[:,0], 2)
-        self.p_quad = np.poly1d(self.p_quad)
+        # # Fit the points to a 2-degree polynomial
+        # self.p_quad = np.polyfit(points[:,1], points[:,0], 2)
+        # self.p_quad = np.poly1d(self.p_quad)
 
 
 
@@ -147,8 +162,8 @@ class DuckiebotCamera:
     # Compute the distance of the car from the estimated line
     def compute_dist(self, n=10):
         y = self.car_pos[1]  # car's y position
-        x = self.quadratic_formula(self.p_quad - y)
-
+        #x = self.quadratic_formula(self.p_quad - y)
+        x =-1
         if x != -1:
             # Take the solution that is closer to the points in binary image
             avg_distance = np.array([0, 0])
@@ -180,7 +195,18 @@ class DuckiebotCamera:
         self.warp_image()
 
         # Filter out the yellow dotted line 
-        self.get_binary_image()
+        self.img_bin = self.get_binary_image(self.yellow_lower, self.yellow_upper)
+
+        # Filter for red line
+        img_bin_red = self.get_binary_image(self.red_lower[0], self.red_upper[0])
+        img_bin_red += self.get_binary_image(self.red_lower[1], self.red_upper[1])
+        img_bin_red = img_bin_red[-100::,:] #self.warp_param[0]:self.warp_param[1]]
+        if 1 in img_bin_red:
+            self.at_intersection = True
+            print("At intersection")
+        else:
+            self.at_intersection = False
+        
 
         try:
             # Estimate the lane as a 1 dimensional polynomial
@@ -198,25 +224,27 @@ class DuckiebotCamera:
 
 
     def draw_estimate(self):
-        cv2.namedWindow("Quadratic Estimate")
+        #cv2.namedWindow("Quadratic Estimate")
         cv2.namedWindow("Linear Estimate")
 
-        (left, right) = self.warp_param
+        (_, right) = self.img_bin.shape #self.warp_param
+        left = 0
+        # right = right - 1
 
         img_lin = np.copy(self.img_warped)
         p1 = ( left, int(self.p_lin(left)) )
         p2 = ( right, int(self.p_lin(right)) )
         cv2.line(img_lin, p1, p2, (0, 0, 255), 5)
 
-        img_quad = np.copy(self.img_warped)
-        for x in range(left, right):
-            p = ( x, int(self.p_quad(x)) )
-            cv2.circle(img_quad, p, radius=4, color=(0,255,0), thickness=-1)
+        # img_quad = np.copy(self.img_warped)
+        # for x in range(left, right):
+        #     p = ( x, int(self.p_quad(x)) )
+        #     cv2.circle(img_quad, p, radius=4, color=(0,255,0), thickness=-1)
         
         (img_h, img_w, _) = self.img_warped.shape
         img_lin = cv2.warpPerspective(img_lin, self.Minv, (img_w, img_h))
-        img_quad = cv2.warpPerspective(img_quad, self.Minv, (img_w, img_h))
-        cv2.imshow("Quadratic Estimate", img_quad)
+        #img_quad = cv2.warpPerspective(img_quad, self.Minv, (img_w, img_h))
+        #cv2.imshow("Quadratic Estimate", img_quad)
         cv2.imshow("Linear Estimate", img_lin)
 
         if cv2.waitKey(1)!=-1:     
@@ -239,11 +267,10 @@ class DuckiebotCamera:
 
             # Use the estimates to compute steering 
             action = Twist()
-            k_d = 0.3
-            k_p = 0.01
+            k_d = 0.55
 
-            v = 0.2  # Constant linear velocity
-            w = k_d*(-self.theta) #+ k_p*(45 - self.dist) # Angular velocity
+            v = 0.2 #0.005 * (45 - self.dist) / self.theta  # Constant linear velocity
+            w = k_d*(-self.theta)  # Angular velocity
             
 
             # Publish to \cmd_vel
@@ -259,12 +286,14 @@ class DuckiebotCamera:
         if cv2.waitKey(1)!=-1:     #Burak, needs to modify this line to work on your computer, THANKS!
             cv2.destroyAllWindows() 
 
-    def shutdown():
+
+    def shutdown(self):
         vel_msg = Twist()
         self.pub.publish(vel_msg)
 
+
 if __name__ == "__main__":
     rospy.init_node('duckietown_camera_controller', anonymous=False)
-    duckiecam = DuckiebotCamera(show_cam=True, window_param=(150,150))
+    duckiecam = DuckiebotCamera(show_cam=True, window_param=(30,150))
     rospy.on_shutdown(duckiecam.shutdown)
     rospy.spin()
