@@ -68,17 +68,25 @@ Start the sim and supporting nodes with `$ roslaunch robotics_project run_sim.la
 
 Use the Jupyter Notebook `find_lane.ipynb` to go through the process of estimating the car's pose relative to the center lane line for one image.
 
-In one terminal, start ROS with `$ roscore`  
+In one terminal, start ROS with:
+>`$ roscore`  
 
-Open another terminal and start the simulation node `$ python duckietown-sim-node.py`
+Open another terminal and start the simulation node:
+>`$ python duckietown-sim-node.py`
 
-Open a third terminal and start the camera controler node `$ python duckietown_camera_controller.py`
+Open a third terminal and start the camera controler node:
+>`$ python duckietown_camera_controller.py`
 
-Optionally, run a node that shows the warped and filtered perspective with `$ python duckietown_camera_show_binary.py`
+Optionally, run a node that shows the warped and filtered perspective with:
+>`$ python duckietown_camera_show_binary.py`
 
 Video demo in `visual_lane_following_demo.mp4`
 
+Small window height seems to perform better on the turns, but doesn't perform well at the intersections because there is a gap in the yellow dotted line.  
+Possible Solution: Filter for red. When there is a red horizontal line, the robot knows its at an intersection and will increase the window height.  
+
 TODO:  
 
+- Figure out how to implement distance from centerline into steering control
 - adjust gains for better control
 - Build using ROS catkin system so that it can be launched using `roslaunch`  
