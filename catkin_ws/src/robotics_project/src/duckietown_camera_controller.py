@@ -375,6 +375,6 @@ class DuckiebotCamera:
 
 if __name__ == "__main__":
     rospy.init_node('duckietown_camera_controller', anonymous=False)
-    duckiecam = DuckiebotCamera(show_cam=True, window_param=(30,150), show_processing_ros=True, show_output_ros=True, k_p=0)
+    duckiecam = DuckiebotCamera(show_cam=True, window_param=(30,150), show_processing_ros=True, show_output_ros=True, k_d=0.55, k_p=0)
     rospy.on_shutdown(duckiecam.shutdown)
     rospy.spin()
