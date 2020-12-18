@@ -1,0 +1,11 @@
+<launch>
+  <node pkg="robotics_project" type="sim.py" name="sim" />
+  <node pkg="robotics_project" type="static_tf2_broadcaster.py" name="static_tf2_broadcaster"/>
+  <node pkg="image_proc" type="image_proc" name="image_proc" />
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robotics_project)/launch/config/tf_tree.rviz" />
+
+  <node type="duckietown_camera_controller.py" name="lane" pkg="robotics_project" >
+    <remap from="cmd_vel" to="twist_lane" />
+  </node>
+</launch>
