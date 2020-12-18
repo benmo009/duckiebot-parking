@@ -40,7 +40,7 @@ Start the keyboard teleop node with `$ rosrun teleop_twist_keyboard teleop_twist
 
 Start the twist to motors node on the dukiebot with `$ python twist_to_motors.py` (In the teleop folder)
 
-## Running Lane Following and Parking Autonomous Code on Simulator
+## Running Autonomous Code on Simulator
 
 First start ros with `$ roscore`
 
@@ -61,6 +61,37 @@ Start the sim and supporting nodes with `$ roslaunch robotics_project run_sim.la
 - driving_parking_selector.py: Checks if the parking tag is close enough to park. Sends commands to the mux to select either lane following or parking
 - park_at_pose.py: Sends twist commands to park in front of the apriltag, based on transfroms from statc_tf2_broadcaster.py
 - duckietown_camera_controller.py: Sends twist commands to follow the lane
+- obstacle_avoidance.py: Sends steering commands to duckietown camera controller to steer around obstacles
+
+## Running Autonomous Code on the Real Robot
+
+Setup the `ROS_MASTER_URI` environment variable on the duckiebot and host computer so that they have the same ros master.
+
+Example: `export ROS_MASTER_URI=http://192.168.1.232:11311/`
+
+Setup the `ROS_IP` environment variable on each computer to the computer's ip.
+
+Example (computer): `export ROS_IP=192.168.1.232`
+
+Example (duckiebot): `export ROS_IP=192.168.1.35`
+
+On the raspberry pi, run the setup_camera.sh script in the PhysicalDuckiebot folder to expose the picam as a standard v video device.
+
+First start ros with `$ roscore` (on the system set to the Master URI. It is recommended to make this system the duckiebot)
+
+Start the autonomy with  `$ roslaunch robotics_project run_physical.launch`. This runs the following nodes
+
+- static_tf2_broadcaster_physical.py: Broadcasts relative transform between sign+parking spot, and between camera+duckiebot
+- twist_to_motors.py: Converts twist commands to motor commands
+- cv_camera: Publishes images from picam
+- image_proc: Uses camera parameters to rectify the image
+- image_resize_nodelet: Resizes images to make processing fast enough on the pi
+- apriltag_physical.launch: Launches the apriltag nodes
+- mux: Selects between the parking twist and the lane following tesit
+- driving_parking_selector.py: Checks if the parking tag is close enough to park. Sends commands to the mux to select either lane following or parking
+- park_at_pose_physical.py: Sends twist commands to park in front of the apriltag, based on transfroms from statc_tf2_broadcaster.py
+- physical_camera_controller.py: Sends twist commands to follow the lane
+- obstacle_avoidance.py: Sends steering commands to duckietown camera controller to steer around obstacles
 
 
 
@@ -85,8 +116,3 @@ Video demo in `visual_lane_following_demo.mp4`
 Small window height seems to perform better on the turns, but doesn't perform well at the intersections because there is a gap in the yellow dotted line.  
 Possible Solution: Filter for red. When there is a red horizontal line, the robot knows its at an intersection and will increase the window height.  
 
-TODO:  
-
-- Figure out how to implement distance from centerline into steering control
-- adjust gains for better control
-- Build using ROS catkin system so that it can be launched using `roslaunch`  
